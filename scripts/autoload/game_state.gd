@@ -21,6 +21,10 @@ var current_scene: String = "res://scenes/game.tscn"
 
 func set_flag(name: String, value: Variant) -> void:
 	flags[name] = value
+	# Record any journal entry this flag unlocks (see `when_flag` in
+	# data/dialogue/journal.json). Loading a save does not come through here,
+	# so a loaded journal is restored as saved.
+	Journal.sync_with_flags(flags)
 	state_changed.emit()
 
 

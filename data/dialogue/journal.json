@@ -1,0 +1,37 @@
+{
+	"entry_logbook": {
+		"speaker": "",
+		"text": "",
+		"next": null
+	},
+	"entry_skeptic": {
+		"speaker": "",
+		"text": "",
+		"next": null,
+		"when_flag": { "skeptic": true }
+	},
+	"entry_believer": {
+		"speaker": "",
+		"text": "",
+		"next": null,
+		"when_flag": { "believer": true }
+	},
+	"entry_trusted_edith": {
+		"speaker": "",
+		"text": "",
+		"next": null,
+		"when_flag": { "trusted_edith": true }
+	},
+	"entry_kept_quiet": {
+		"speaker": "",
+		"text": "",
+		"next": null,
+		"when_flag": { "trusted_edith": false }
+	},
+	"entry_radioed_tom": {
+		"speaker": "",
+		"text": "",
+		"next": null,
+		"when_flag": { "radioed_tom": true }
+	}
+}
