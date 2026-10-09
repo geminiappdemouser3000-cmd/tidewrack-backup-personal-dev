@@ -2,12 +2,16 @@ extends Node
 ## GameState — global save/load and story flags.
 ##
 ## Autoloaded as `GameState`. Holds the narrative flags set by dialogue
-## choices and persists them to user://save.json so "Continue" works.
+## choices and persists them to user://save.json so "Continue" works. The
+## save file also carries the discovered journal entries (see the `Journal`
+## autoload), so flags and journal are always saved and loaded together.
 
 signal state_changed
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 1
+## 2: adds "journal" (array of discovered entry ids). Version 1 saves have no
+## journal and load with an empty one.
+const SAVE_VERSION := 2
 
 ## Story flags set during play, e.g. {"trusted_edith": true}.
 var flags: Dictionary = {}
@@ -26,6 +30,7 @@ func get_flag(name: String, default: Variant = false) -> Variant:
 
 func new_game() -> void:
 	flags.clear()
+	Journal.clear()
 	current_scene = "res://scenes/game.tscn"
 	state_changed.emit()
 
@@ -39,6 +44,7 @@ func save_game() -> bool:
 		"version": SAVE_VERSION,
 		"scene": current_scene,
 		"flags": flags,
+		"journal": Journal.entries(),
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -69,6 +75,12 @@ func load_game() -> bool:
 	current_scene = data.get("scene", "res://scenes/game.tscn")
 	var loaded_flags: Variant = data.get("flags", {})
 	flags = loaded_flags if typeof(loaded_flags) == TYPE_DICTIONARY else {}
+	# Version 1 saves have no "journal" key; they load with an empty journal.
+	var loaded_journal: Variant = data.get("journal", [])
+	if typeof(loaded_journal) == TYPE_ARRAY:
+		Journal.restore(loaded_journal)
+	else:
+		Journal.clear()
 	state_changed.emit()
 	return true
 
