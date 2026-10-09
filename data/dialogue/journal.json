@@ -1,4 +1,10 @@
 {
+	"entry_eleven_days": {
+		"speaker": "",
+		"text": "Edith Vane has been missing for eleven days.",
+		"next": null,
+		"at_start": true
+	},
 	"entry_logbook": {
 		"speaker": "",
 		"text": "",
