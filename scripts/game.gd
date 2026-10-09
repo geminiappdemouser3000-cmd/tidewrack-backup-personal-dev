@@ -29,6 +29,8 @@ var _journal_note: Label
 var _journal_note_tween: Tween
 var _nearest: Interactable = null
 var _paused: bool = false
+## The pause menu while it is open, so cancel and Resume can both remove it.
+var _pause_layer: CanvasLayer = null
 
 
 func _ready() -> void:
@@ -191,13 +193,27 @@ func _set_movement(enabled: bool) -> void:
 func _toggle_pause() -> void:
 	if DialogueManager.is_active:
 		return
-	_paused = not _paused
-	_set_movement(not _paused)
 	if _paused:
+		_close_pause_menu()
+	else:
+		_paused = true
+		_set_movement(false)
 		_show_pause_menu()
 
 
+## Remove the pause menu and hand control back to the player. Used by the
+## Resume button and by pressing cancel while the menu is open.
+func _close_pause_menu() -> void:
+	if is_instance_valid(_pause_layer):
+		_pause_layer.queue_free()
+	_pause_layer = null
+	_paused = false
+	_set_movement(true)
+
+
 func _show_pause_menu() -> void:
+	if is_instance_valid(_pause_layer):
+		return  # already open; never stack a second menu
 	var overlay := Control.new()
 	overlay.name = "PauseOverlay"
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -206,6 +222,7 @@ func _show_pause_menu() -> void:
 	layer.name = "PauseLayer"
 	layer.add_child(overlay)
 	add_child(layer)
+	_pause_layer = layer
 
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.6)
@@ -221,10 +238,7 @@ func _show_pause_menu() -> void:
 	center.add_child(vbox)
 
 	var resume := _menu_button("Resume")
-	resume.pressed.connect(func():
-		layer.queue_free()
-		_paused = false
-		_set_movement(true))
+	resume.pressed.connect(_close_pause_menu)
 	vbox.add_child(resume)
 
 	# The journal only appears once there is something in it.
