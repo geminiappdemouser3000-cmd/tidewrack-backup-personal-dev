@@ -7,11 +7,21 @@ const DIALOGUE := "res://data/dialogue/keeper_intro.json"
 const INTERACT_RADIUS := 90.0
 const ROOM := Rect2(120, 140, 1040, 460)
 
+## Journal entry recorded when the player finishes examining an interactable,
+## keyed by the interactable's dialogue start id. Only the keeper's log makes
+## an entry for now; add a line here to have another object record one. The
+## entry's title and text live in res://data/dialogue/journal.json.
+const JOURNAL_ENTRIES := {
+	"logbook": "entry_logbook",
+}
+
 var _player: Player
 var _interactables: Array[Interactable] = []
 var _prompt: Label
 var _nearest: Interactable = null
 var _paused: bool = false
+## Entry to record when the dialogue now playing finishes ("" for none).
+var _pending_entry: String = ""
 
 
 func _ready() -> void:
@@ -25,6 +35,7 @@ func _ready() -> void:
 
 	DialogueManager.dialogue_started.connect(func(): _set_movement(false))
 	DialogueManager.dialogue_finished.connect(func(): _set_movement(true))
+	DialogueManager.dialogue_finished.connect(_record_pending_entry)
 
 
 func _build_room() -> void:
@@ -129,8 +140,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _paused or DialogueManager.is_active:
 		return
 	if event.is_action_pressed("ui_accept") and _nearest != null:
+		var start_id := _nearest.dialogue_start
 		_nearest.interact()
+		# Only queue the entry if the dialogue really started.
+		_pending_entry = str(JOURNAL_ENTRIES.get(start_id, "")) if DialogueManager.is_active else ""
 		get_viewport().set_input_as_handled()
+
+
+func _record_pending_entry() -> void:
+	if _pending_entry != "":
+		Journal.discover(_pending_entry)
+		_pending_entry = ""
 
 
 func _set_movement(enabled: bool) -> void:
@@ -176,6 +196,13 @@ func _show_pause_menu() -> void:
 		_paused = false
 		_set_movement(true))
 	vbox.add_child(resume)
+
+	# The journal only appears once there is something in it.
+	if not Journal.entries().is_empty():
+		var journal := _menu_button("Journal")
+		journal.pressed.connect(func():
+			overlay.add_child(JournalReader.new()))
+		vbox.add_child(journal)
 
 	var save := _menu_button("Save")
 	save.pressed.connect(func():
