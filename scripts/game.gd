@@ -1,7 +1,7 @@
 extends Node2D
 ## Game — the vertical-slice level: the ground floor of Cape Marrow Light.
-## Builds the room, player, interactables, HUD prompt, dialogue box, and a
-## pause overlay in code.
+## Builds the room, player, interactables, HUD prompt, the "Journal updated"
+## line, dialogue box, and a pause overlay in code.
 
 const DIALOGUE := "res://data/dialogue/keeper_intro.json"
 const INTERACT_RADIUS := 90.0
@@ -17,9 +17,16 @@ const JOURNAL_ENTRIES := {
 	"logbook": "entry_logbook",
 }
 
+## The line shown at the top right whenever an entry is recorded, and how
+## long it stays fully visible (it fades in and out on either side of that).
+const JOURNAL_NOTE_TEXT := "Journal updated"
+const JOURNAL_NOTE_SECONDS := 2.5
+
 var _player: Player
 var _interactables: Array[Interactable] = []
 var _prompt: Label
+var _journal_note: Label
+var _journal_note_tween: Tween
 var _nearest: Interactable = null
 var _paused: bool = false
 
@@ -35,6 +42,7 @@ func _ready() -> void:
 
 	DialogueManager.dialogue_started.connect(func(): _set_movement(false))
 	DialogueManager.dialogue_finished.connect(func(): _set_movement(true))
+	Journal.entry_added.connect(_show_journal_note)
 
 
 func _build_room() -> void:
@@ -104,6 +112,33 @@ func _build_hud() -> void:
 	_prompt.modulate = Color("#ffd466")
 	_prompt.hide()
 	layer.add_child(_prompt)
+
+	# Top right, clear of the dialogue box, which sits along the bottom.
+	_journal_note = Label.new()
+	_journal_note.text = JOURNAL_NOTE_TEXT
+	_journal_note.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_journal_note.offset_left = -332
+	_journal_note.offset_right = -32
+	_journal_note.offset_top = 24
+	_journal_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_journal_note.add_theme_font_size_override("font_size", 20)
+	_journal_note.modulate = Color("#ffd466", 0.0)
+	_journal_note.hide()
+	layer.add_child(_journal_note)
+
+
+## Show the "Journal updated" line. Entries recorded while it is already up
+## (several choices in one conversation) restart its time on screen instead of
+## stacking. Starting entries and loaded saves do not come through here.
+func _show_journal_note(_id: String) -> void:
+	if _journal_note_tween != null:
+		_journal_note_tween.kill()
+	_journal_note.show()
+	_journal_note_tween = create_tween()
+	_journal_note_tween.tween_property(_journal_note, "modulate:a", 1.0, 0.25)
+	_journal_note_tween.tween_interval(JOURNAL_NOTE_SECONDS)
+	_journal_note_tween.tween_property(_journal_note, "modulate:a", 0.0, 0.6)
+	_journal_note_tween.tween_callback(_journal_note.hide)
 
 
 func _process(_delta: float) -> void:
