@@ -237,6 +237,15 @@ func _show_pause_menu() -> void:
 	vbox.add_theme_constant_override("separation", 12)
 	center.add_child(vbox)
 
+	# The day count, small and dim above the buttons: the same line as the
+	# journal header, here so it is seen without opening the journal.
+	var days := Label.new()
+	days.text = JournalReader.days_text()
+	days.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	days.add_theme_font_size_override("font_size", 16)
+	days.modulate = Color(1, 1, 1, 0.5)
+	vbox.add_child(days)
+
 	var resume := _menu_button("Resume")
 	resume.pressed.connect(_close_pause_menu)
 	vbox.add_child(resume)

@@ -37,8 +37,10 @@ const LIST_WIDTH := 300.0
 const FADE_HEIGHT := 48.0
 
 ## Edith had been gone eleven days when the game opens. Once the game counts
-## days, set the story flag below to the number of days played and the header
-## follows it. Until then the header reads eleven.
+## days, set the story flag below to the number of days played and the day
+## line follows it. Until then it reads eleven. The same line is shown in the
+## journal header and on the pause menu (scripts/game.gd), both through
+## days_text().
 const DAYS_GONE_AT_START := 11
 const DAYS_ELAPSED_FLAG := "days_elapsed"
 
@@ -177,7 +179,9 @@ func _body_for(id: String) -> String:
 	return "\n\n".join(parts)
 
 
-func _days_text() -> String:
+## The day-count line, e.g. "Day 11 since Edith rowed out". Static so other
+## screens can show the same wording without opening the journal.
+static func days_text() -> String:
 	var days := DAYS_GONE_AT_START + int(GameState.get_flag(DAYS_ELAPSED_FLAG, 0))
 	return "Day %d since Edith rowed out" % days
 
@@ -223,7 +227,7 @@ func _build_ui() -> void:
 	header.add_child(title)
 
 	var days := Label.new()
-	days.text = _days_text()
+	days.text = days_text()
 	days.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	days.size_flags_vertical = Control.SIZE_SHRINK_END
 	days.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
