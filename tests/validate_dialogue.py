@@ -9,6 +9,10 @@ Checks, for every data/dialogue/*.json file:
   - at least one terminal (next == null) is reachable from an entry point
   - reports orphan nodes (unreachable from any known entry) as warnings
 
+Then prints a flag report: for every choice in every graph, the story flags it
+sets (or that it sets none), and the flags each graph sets overall. The report
+is for reading; it never changes the exit code.
+
 Exit code 0 = all valid, 1 = at least one error.
 
 Usage:  python3 tests/validate_dialogue.py
@@ -103,6 +107,62 @@ def validate_file(path: Path) -> tuple[list[str], list[str]]:
     return errors, warnings
 
 
+def describe_flags(set_flag: object) -> str:
+    """One line for a `set_flag` value, e.g. 'trusted_edith = false'."""
+    if set_flag is None:
+        return "(sets no flag)"
+    if not isinstance(set_flag, dict):
+        return f"(set_flag is not an object: {json.dumps(set_flag)})"
+    if not set_flag:
+        return "(sets no flag)"
+    return ", ".join(f"{name} = {json.dumps(value)}" for name, value in set_flag.items())
+
+
+def flag_report(path: Path) -> list[str]:
+    """Lines listing the flags each choice (and each node) in a graph sets."""
+    try:
+        graph = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return [f"  {path.name}: not readable (invalid JSON)"]
+    if not isinstance(graph, dict):
+        return [f"  {path.name}: not readable (top level is not an object)"]
+
+    lines: list[str] = []
+    flags_set: set[str] = set()
+    for nid, node in graph.items():
+        if not isinstance(node, dict):
+            continue
+        node_lines: list[str] = []
+
+        # A node can set flags itself, applied when the node is entered.
+        if "set_flag" in node:
+            node_lines.append(f"      on entering this node -> {describe_flags(node['set_flag'])}")
+            if isinstance(node["set_flag"], dict):
+                flags_set.update(str(name) for name in node["set_flag"])
+
+        choices = node.get("choices")
+        if isinstance(choices, list) and choices:
+            labels = [
+                json.dumps(str(c.get("text", "")), ensure_ascii=False) if isinstance(c, dict) else "(not an object)"
+                for c in choices
+            ]
+            width = max(len(label) for label in labels)
+            for label, choice in zip(labels, choices):
+                set_flag = choice.get("set_flag") if isinstance(choice, dict) else None
+                node_lines.append(f"      {label.ljust(width)} -> {describe_flags(set_flag)}")
+                if isinstance(set_flag, dict):
+                    flags_set.update(str(name) for name in set_flag)
+
+        if node_lines:
+            lines.append(f"    {nid}")
+            lines += node_lines
+
+    if not lines:
+        return [f"  {path.name}: no choices, sets no flags"]
+    summary = ", ".join(sorted(flags_set)) if flags_set else "none"
+    return [f"  {path.name}"] + lines + [f"    flags this graph sets: {summary}"]
+
+
 def main() -> int:
     files = sorted(DIALOGUE_DIR.glob("*.json"))
     if not files:
@@ -122,6 +182,12 @@ def main() -> int:
         print(f"  warning: {w}")
     for e in all_errors:
         print(f"  ERROR:   {e}")
+
+    print()
+    print("Flag report")
+    for path in files:
+        for line in flag_report(path):
+            print(line)
 
     print()
     if all_errors:
